@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function App() {
-  // ✅ ИСПРАВЛЕНО: добавил знак "=" после useState
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState(null);
   const [step, setStep] = useState('login');
@@ -26,10 +25,15 @@ function App() {
     deadline_weeks: 8
   });
 
-  const api = axios.create({ baseURL: 'http://localhost:8000/api' });
+  // ✅ ИЗМЕНЕНО: URL для продакшена на Render
+  const api = axios.create({ 
+    baseURL: 'https://sports-platform-api-b9e4.onrender.com/api' 
+  });
 
   api.interceptors.request.use((config) => {
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   });
 
