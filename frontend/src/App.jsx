@@ -98,38 +98,65 @@ function App() {
     setLoading(false);
   };
 
-  // ✅ ИСПРАВЛЕНО: Обработка всех типов целей
+  // ✅ ИСПРАВЛЕНО: корректная обработка всех типов целей
   const createGoal = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       let targetValue = goalData.target_value;
       
-      // Для цели "общее оздоровление" передаем 0
+      // Для "общего оздоровления" всегда передаем 0
       if (goalData.goal_type === 'health') {
         targetValue = 0;
       }
       
-      // Преобразуем в число
+      // Преобразуем в число и проверяем
+      const numericTarget = parseFloat(targetValue);
+      if (isNaN(numericTarget) && goalData.goal_type !== 'health') {
+        alert('⚠️ Пожалуйста, укажите корректное целевое значение');
+        setLoading(false);
+        return;
+      }
+      
       const payload = {
         goal_type: goalData.goal_type,
-        target_value: parseFloat(targetValue) || 0,
+        target_value: goalData.goal_type === 'health' ? 0 : numericTarget,
         deadline_weeks: goalData.deadline_weeks
       };
       
-      await api.post('/api/plan/create-goal', payload);
-      setStep('plan');
+      // Создаем цель
+      const response = await api.post('/api/plan/create-goal', payload);
+      console.log('✅ Цель создана:', response.data);
       
-      const response = await api.post('/api/plan/generate');
+      // Переходим к генерации плана
+      setStep('plan');
+      const generateResponse = await api.post('/api/plan/generate');
+      
+      // Формируем структуру недель
       const weeksMap = {};
-      response.data.plan.forEach(item => {
+      generateResponse.data.plan.forEach(item => {
         if (!weeksMap[item.week]) weeksMap[item.week] = [];
         weeksMap[item.week].push(item);
       });
       setWeeks(weeksMap);
+      
     } catch (error) {
-      console.error('Ошибка создания цели:', error);
-      alert('❌ Ошибка создания цели. Проверьте консоль для деталей.');
+      console.error('❌ Ошибка создания цели:', error);
+      if (error.response) {
+        // Сервер вернул ошибку
+        const status = error.response.status;
+        if (status === 401) {
+          alert('❌ Сессия истекла. Пожалуйста, войдите заново.');
+          handleLogout();
+        } else {
+          alert(`❌ Ошибка: ${error.response.data.detail || error.response.statusText}`);
+        }
+      } else if (error.request) {
+        // Запрос не дошел до сервера (CORS или сеть)
+        alert('❌ Ошибка сети. Проверьте подключение к интернету.');
+      } else {
+        alert('❌ Ошибка создания цели. Проверьте консоль для деталей.');
+      }
     }
     setLoading(false);
   };
@@ -233,17 +260,6 @@ function App() {
       display: 'flex',
       alignItems: 'center',
       gap: '8px'
-    },
-    buttonSuccess: {
-      padding: '10px 24px',
-      background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-      color: 'white',
-      border: 'none',
-      borderRadius: '10px',
-      fontSize: '15px',
-      fontWeight: '500',
-      cursor: 'pointer',
-      boxShadow: '0 4px 15px rgba(72, 187, 120, 0.3)'
     },
     buttonDanger: {
       padding: '8px 20px',
