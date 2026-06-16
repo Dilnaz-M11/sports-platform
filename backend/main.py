@@ -13,7 +13,7 @@ app = FastAPI(
 # ✅ РАЗРЕШАЕМ ВСЕ ИСТОЧНИКИ (для теста)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Временно разрешаем все источники
+    allow_origins=["*"],  # Разрешаем все источники
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
