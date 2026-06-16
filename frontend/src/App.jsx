@@ -27,7 +27,7 @@ function App() {
 
   // ✅ ИЗМЕНЕНО: URL для продакшена на Render
   const api = axios.create({ 
-    baseURL: 'https://sports-platform-api-b9e4.onrender.com' 
+  baseURL: 'https://sports-platform-api-b9e4.onrender.com/api' 
   });
 
   api.interceptors.request.use((config) => {
