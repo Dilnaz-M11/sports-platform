@@ -1,21 +1,21 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session  # ← Изменено
 from sqlalchemy import select, update, delete, and_
 from datetime import datetime
 from models.training import Training
 
 class TrainingRepository:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: Session):  # ← Изменено
         self.session = session
     
-    async def add_training(self, training_data: dict) -> Training:
+    def add_training(self, training_data: dict) -> Training:  # ← убрали async
         training = Training(**training_data)
         self.session.add(training)
-        await self.session.commit()
-        await self.session.refresh(training)
+        self.session.commit()
+        self.session.refresh(training)
         return training
     
-    async def get_trainings_by_user(self, user_id: int, limit: int = 100, offset: int = 0):
-        result = await self.session.execute(
+    def get_trainings_by_user(self, user_id: int, limit: int = 100, offset: int = 0):  # ← убрали async
+        result = self.session.execute(
             select(Training)
             .where(Training.user_id == user_id)
             .order_by(Training.start_time.desc())
@@ -24,8 +24,8 @@ class TrainingRepository:
         )
         return result.scalars().all()
     
-    async def get_trainings_by_date_range(self, user_id: int, start_date: datetime, end_date: datetime):
-        result = await self.session.execute(
+    def get_trainings_by_date_range(self, user_id: int, start_date: datetime, end_date: datetime):  # ← убрали async
+        result = self.session.execute(
             select(Training)
             .where(
                 and_(
@@ -38,26 +38,26 @@ class TrainingRepository:
         )
         return result.scalars().all()
     
-    async def get_training_by_id(self, training_id: int, user_id: int) -> Training | None:
-        result = await self.session.execute(
+    def get_training_by_id(self, training_id: int, user_id: int) -> Training | None:  # ← убрали async
+        result = self.session.execute(
             select(Training).where(
                 and_(Training.id == training_id, Training.user_id == user_id)
             )
         )
         return result.scalar_one_or_none()
     
-    async def update_training(self, training_id: int, user_id: int, update_data: dict) -> Training | None:
-        await self.session.execute(
+    def update_training(self, training_id: int, user_id: int, update_data: dict) -> Training | None:  # ← убрали async
+        self.session.execute(
             update(Training)
             .where(and_(Training.id == training_id, Training.user_id == user_id))
             .values(**update_data)
         )
-        await self.session.commit()
-        return await self.get_training_by_id(training_id, user_id)
+        self.session.commit()
+        return self.get_training_by_id(training_id, user_id)
     
-    async def delete_training(self, training_id: int, user_id: int) -> bool:
-        result = await self.session.execute(
+    def delete_training(self, training_id: int, user_id: int) -> bool:  # ← убрали async
+        result = self.session.execute(
             delete(Training).where(and_(Training.id == training_id, Training.user_id == user_id))
         )
-        await self.session.commit()
+        self.session.commit()
         return result.rowcount > 0

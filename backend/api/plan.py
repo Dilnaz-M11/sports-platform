@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session  # ← Изменено: вместо AsyncSession
 from sqlalchemy import select, update, delete
 from pydantic import BaseModel
 from typing import Optional
@@ -30,11 +30,12 @@ class GoalCreate(BaseModel):
     deadline_weeks: Optional[int] = 8
 
 
+# ✅ ИСПРАВЛЕНО: убраны async/await, AsyncSession → Session
 @router.post("/update-profile")
-async def update_user_profile(
+def update_user_profile(
     user_data: UserDataUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """Обновление антропометрических данных пользователя"""
     current_user.birth_date = user_data.birth_date
@@ -45,21 +46,22 @@ async def update_user_profile(
     current_user.rest_hr = user_data.rest_hr
     current_user.max_hr = user_data.max_hr
     
-    await db.commit()
-    await db.refresh(current_user)
+    db.commit()  # ← убрали await
+    db.refresh(current_user)  # ← убрали await
     
     return {"message": "Профиль обновлён", "user_id": current_user.id}
 
 
+# ✅ ИСПРАВЛЕНО: убраны async/await
 @router.post("/create-goal")
-async def create_goal(
+def create_goal(
     goal_data: GoalCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """Создание цели пользователя"""
     # Архивируем старые активные цели
-    await db.execute(
+    db.execute(
         update(Goal).where(Goal.user_id == current_user.id, Goal.status == "active").values(status="archived")
     )
     
@@ -70,20 +72,21 @@ async def create_goal(
         deadline_weeks=goal_data.deadline_weeks
     )
     db.add(goal)
-    await db.commit()
-    await db.refresh(goal)
+    db.commit()  # ← убрали await
+    db.refresh(goal)  # ← убрали await
     
     return {"message": "Цель создана", "goal_id": goal.id}
 
 
+# ✅ ИСПРАВЛЕНО: убраны async/await
 @router.post("/generate")
-async def generate_training_plan(
+def generate_training_plan(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """Генерация тренировочного плана на основе последней активной цели"""
     # Получаем последнюю активную цель
-    result = await db.execute(
+    result = db.execute(
         select(Goal).where(
             Goal.user_id == current_user.id,
             Goal.status == "active"
@@ -95,7 +98,7 @@ async def generate_training_plan(
         raise HTTPException(status_code=404, detail="Цель не найдена. Сначала создайте цель.")
     
     # Удаляем старый план
-    await db.execute(delete(TrainingPlan).where(TrainingPlan.user_id == current_user.id))
+    db.execute(delete(TrainingPlan).where(TrainingPlan.user_id == current_user.id))
     
     # Генерируем новый план
     weeks = goal.deadline_weeks or 8
@@ -121,7 +124,7 @@ async def generate_training_plan(
         )
         db.add(training)
     
-    await db.commit()
+    db.commit()  # ← убрали await
     
     return {
         "message": "План сгенерирован",
@@ -131,13 +134,14 @@ async def generate_training_plan(
     }
 
 
+# ✅ ИСПРАВЛЕНО: убраны async/await
 @router.get("/current")
-async def get_current_plan(
+def get_current_plan(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """Получение текущего тренировочного плана"""
-    result = await db.execute(
+    result = db.execute(
         select(TrainingPlan).where(
             TrainingPlan.user_id == current_user.id
         ).order_by(TrainingPlan.week_number, TrainingPlan.day_of_week)
@@ -170,14 +174,15 @@ async def get_current_plan(
     }
 
 
+# ✅ ИСПРАВЛЕНО: убраны async/await
 @router.post("/complete/{plan_id}")
-async def complete_training(
+def complete_training(
     plan_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """Отметить тренировку как выполненную"""
-    result = await db.execute(
+    result = db.execute(
         select(TrainingPlan).where(
             TrainingPlan.id == plan_id,
             TrainingPlan.user_id == current_user.id
@@ -190,6 +195,6 @@ async def complete_training(
     
     training.completed = 1
     training.completed_date = date.today()
-    await db.commit()
+    db.commit()  # ← убрали await
     
     return {"message": "Тренировка отмечена как выполненная"}

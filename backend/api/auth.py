@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session  # ← Изменено: вместо AsyncSession
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
@@ -57,7 +57,8 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+# ✅ ИСПРАВЛЕНО: убраны async/await, AsyncSession → Session
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """Получение текущего пользователя из токена"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -69,7 +70,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         user_id = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-        # Преобразуем строку из токена в integer для PostgreSQL
         user_id = int(user_id)
     except JWTError:
         raise credentials_exception
@@ -77,22 +77,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise credentials_exception
     
     user_repo = UserRepository(db)
-    user = await user_repo.get_user_by_id(user_id)
+    user = user_repo.get_user_by_id(user_id)  # ← убрали await
     if user is None:
         raise credentials_exception
     return user
 
+# ✅ ИСПРАВЛЕНО: убраны async/await
 @router.post("/register", summary="Регистрация пользователя")
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Регистрация нового пользователя"""
     user_repo = UserRepository(db)
     
     # Проверка существования пользователя
-    existing_user = await user_repo.get_user_by_login(user_data.login)
+    existing_user = user_repo.get_user_by_login(user_data.login)  # ← убрали await
     if existing_user:
         raise HTTPException(status_code=400, detail="Логин уже используется")
     
-    existing_email = await user_repo.get_user_by_email(user_data.email)
+    existing_email = user_repo.get_user_by_email(user_data.email)  # ← убрали await
     if existing_email:
         raise HTTPException(status_code=400, detail="Email уже используется")
     
@@ -106,7 +107,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         user_dict["birth_date"] = datetime.strptime(user_dict["birth_date"], "%Y-%m-%d").date()
     
     # Создание пользователя
-    new_user = await user_repo.create_user(user_dict)
+    new_user = user_repo.create_user(user_dict)  # ← убрали await
     
     return UserResponse(
         id=new_user.id, 
@@ -115,15 +116,15 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         created_at=new_user.created_at
     )
 
+# ✅ ИСПРАВЛЕНО: убраны async/await
 @router.post("/login", summary="Вход в систему")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Аутентификация пользователя и выдача токена"""
     user_repo = UserRepository(db)
-    user = await user_repo.get_user_by_login(form_data.username)
+    user = user_repo.get_user_by_login(form_data.username)  # ← убрали await
     
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
     
-    # Создаём токен с user.id (преобразуем в строку для JWT)
     access_token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}
