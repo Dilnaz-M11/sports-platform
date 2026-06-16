@@ -25,9 +25,9 @@ function App() {
     deadline_weeks: 8
   });
 
-  // ✅ ИЗМЕНЕНО: URL для продакшена на Render
+  // ✅ URL для продакшена на Render
   const api = axios.create({ 
-  baseURL: 'https://sports-platform-api-b9e4.onrender.com/api' 
+    baseURL: 'https://sports-platform-api-b9e4.onrender.com' 
   });
 
   api.interceptors.request.use((config) => {
@@ -50,7 +50,7 @@ function App() {
     setLoading(true);
     const formData = new FormData(e.target);
     try {
-      const response = await api.post('/auth/login', {
+      const response = await api.post('/api/auth/login', {
         username: formData.get('username'),
         password: formData.get('password')
       }, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
@@ -69,7 +69,7 @@ function App() {
     setLoading(true);
     const formData = new FormData(e.target);
     try {
-      await api.post('/auth/register', {
+      await api.post('/api/auth/register', {
         login: formData.get('login'),
         email: formData.get('email'),
         password: formData.get('password'),
@@ -90,7 +90,7 @@ function App() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/plan/update-profile', userData);
+      await api.post('/api/plan/update-profile', userData);
       setStep('goal');
     } catch (error) {
       alert('❌ Ошибка сохранения профиля');
@@ -98,13 +98,29 @@ function App() {
     setLoading(false);
   };
 
+  // ✅ ИСПРАВЛЕНО: Обработка всех типов целей
   const createGoal = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/plan/create-goal', goalData);
+      let targetValue = goalData.target_value;
+      
+      // Для цели "общее оздоровление" передаем 0
+      if (goalData.goal_type === 'health') {
+        targetValue = 0;
+      }
+      
+      // Преобразуем в число
+      const payload = {
+        goal_type: goalData.goal_type,
+        target_value: parseFloat(targetValue) || 0,
+        deadline_weeks: goalData.deadline_weeks
+      };
+      
+      await api.post('/api/plan/create-goal', payload);
       setStep('plan');
-      const response = await api.post('/plan/generate');
+      
+      const response = await api.post('/api/plan/generate');
       const weeksMap = {};
       response.data.plan.forEach(item => {
         if (!weeksMap[item.week]) weeksMap[item.week] = [];
@@ -112,7 +128,8 @@ function App() {
       });
       setWeeks(weeksMap);
     } catch (error) {
-      alert('❌ Ошибка создания цели');
+      console.error('Ошибка создания цели:', error);
+      alert('❌ Ошибка создания цели. Проверьте консоль для деталей.');
     }
     setLoading(false);
   };
@@ -125,7 +142,7 @@ function App() {
       setIsLoggedIn(true); 
       setStep('profile');
       api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
-      api.get('/plan/current').then(res => {
+      api.get('/api/plan/current').then(res => {
         if (res.data.weeks && Object.keys(res.data.weeks).length > 0) {
           setWeeks(res.data.weeks);
           setStep('plan');
@@ -401,14 +418,8 @@ function App() {
       <div style={styles.container}>
         <div style={{ padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
           <div style={styles.card}>
-            {/* Навигационная панель */}
             <div style={styles.navBar}>
-              <button 
-                onClick={handleLogout}
-                style={styles.buttonDanger}
-              >
-                🚪 Выйти
-              </button>
+              <button onClick={handleLogout} style={styles.buttonDanger}>🚪 Выйти</button>
               <span style={{ fontSize: '14px', color: '#718096' }}>Шаг 1 из 3</span>
             </div>
 
@@ -462,21 +473,10 @@ function App() {
       <div style={styles.container}>
         <div style={{ padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
           <div style={{ ...styles.card, maxWidth: '600px' }}>
-            {/* Навигационная панель */}
             <div style={styles.navBar}>
               <div style={styles.navButtons}>
-                <button 
-                  onClick={() => setStep('profile')}
-                  style={styles.buttonBack}
-                >
-                  ⬅️ Назад
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  style={styles.buttonDanger}
-                >
-                  🚪 Выйти
-                </button>
+                <button onClick={() => setStep('profile')} style={styles.buttonBack}>⬅️ Назад</button>
+                <button onClick={handleLogout} style={styles.buttonDanger}>🚪 Выйти</button>
               </div>
               <span style={{ fontSize: '14px', color: '#718096' }}>Шаг 2 из 3</span>
             </div>
@@ -534,30 +534,17 @@ function App() {
     <div style={styles.container}>
       <div style={{ padding: '20px' }}>
         <div style={styles.cardWide}>
-          {/* Хедер с навигацией */}
           <div style={styles.header}>
             <div>
               <span style={styles.logo}>🏋️ Тренировочная платформа</span>
               <span style={{ marginLeft: '16px', fontSize: '14px', color: '#718096' }}>Ваш персональный план</span>
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <button 
-                onClick={() => setStep('goal')}
-                style={styles.buttonBack}
-              >
-                ⬅️ Назад
-              </button>
+              <button onClick={() => setStep('goal')} style={styles.buttonBack}>⬅️ Назад</button>
               {weekCount > 0 && (
-                <span style={{ ...styles.badge, ...styles.badgeInfo }}>
-                  📅 {weekCount} недель
-                </span>
+                <span style={{ ...styles.badge, ...styles.badgeInfo }}>📅 {weekCount} недель</span>
               )}
-              <button 
-                onClick={handleLogout}
-                style={styles.buttonDanger}
-              >
-                🚪 Выйти
-              </button>
+              <button onClick={handleLogout} style={styles.buttonDanger}>🚪 Выйти</button>
             </div>
           </div>
 
@@ -603,20 +590,14 @@ function App() {
                   <tbody>
                     {weeks[currentWeek].map((item, idx) => (
                       <tr key={idx} style={{ background: idx % 2 === 0 ? 'white' : '#f7fafc' }}>
-                        <td style={styles.td}>
-                          <strong>{dayNames[item.day - 1]}</strong>
-                        </td>
+                        <td style={styles.td}><strong>{dayNames[item.day - 1]}</strong></td>
                         <td style={styles.td}>
                           <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '20px', background: '#ebf4ff', color: '#2a69ac', fontSize: '13px', fontWeight: '500' }}>
                             {item.workout_type || '🏃 Бег'}
                           </span>
                         </td>
-                        <td style={styles.td}>
-                          <strong>{item.duration_min}</strong> мин
-                        </td>
-                        <td style={styles.td}>
-                          {item.distance_km ? <strong>{item.distance_km}</strong> : '-'}
-                        </td>
+                        <td style={styles.td}><strong>{item.duration_min}</strong> мин</td>
+                        <td style={styles.td}>{item.distance_km ? <strong>{item.distance_km}</strong> : '-'}</td>
                         <td style={styles.td}>
                           <span style={{
                             ...styles.badge,
@@ -627,15 +608,9 @@ function App() {
                             {item.intensity_desc || 'средняя'}
                           </span>
                         </td>
-                        <td style={styles.td}>
-                          {item.target_hr_zone || '-'}
-                        </td>
-                        <td style={styles.td}>
-                          {item.calories ? <strong>{item.calories}</strong> : '-'}
-                        </td>
-                        <td style={styles.td}>
-                          {item.trimp || '-'}
-                        </td>
+                        <td style={styles.td}>{item.target_hr_zone || '-'}</td>
+                        <td style={styles.td}>{item.calories ? <strong>{item.calories}</strong> : '-'}</td>
+                        <td style={styles.td}>{item.trimp || '-'}</td>
                         <td style={styles.td}>
                           {item.predicted_weight ? (
                             <span style={{ fontWeight: '600', color: '#2f855a' }}>
@@ -680,10 +655,7 @@ function App() {
               <div style={{ fontSize: '64px', marginBottom: '20px' }}>📋</div>
               <h2 style={{ fontSize: '24px', color: '#2d3748', marginBottom: '12px' }}>План пока не сгенерирован</h2>
               <p style={{ color: '#718096', marginBottom: '24px' }}>Чтобы получить персональный план, заполните профиль и выберите цель</p>
-              <button 
-                onClick={() => setStep('profile')} 
-                style={{ ...styles.buttonPrimary, width: 'auto', padding: '12px 40px' }}
-              >
+              <button onClick={() => setStep('profile')} style={{ ...styles.buttonPrimary, width: 'auto', padding: '12px 40px' }}>
                 🔄 Создать план
               </button>
             </div>
