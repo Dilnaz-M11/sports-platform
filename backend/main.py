@@ -2,30 +2,25 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Загружаем переменные окружения
 load_dotenv()
 
-# Создаем приложение
 app = FastAPI(
-    title="Платформа анализа спортивных тренировок",
-    description="API для автоматического построения персональных тренировочных планов",
+    title="Sports Analytics Platform API",
+    description="API для анализа эффективности спортивных тренировок",
     version="1.0.0"
 )
 
-# Настройка CORS (для доступа с фронтенда)
-# Временно разрешаем все источники для тестирования
-# При деплое заменить "*" на конкретный домен, например "https://sports-platform.vercel.app"
+# ✅ ИСПРАВЛЕННАЯ НАСТРОЙКА CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Временно, для теста. Позже замените на домен Vercel
+    allow_origins=[
+        "https://sports-platform-q1ix.vercel.app",  # Ваш домен на Vercel
+        "http://localhost:5173",                    # Для локальной разработки
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Подключаем все роутеры
-from api import api_router
-app.include_router(api_router, prefix="/api")
 
 @app.get("/")
 def root():
@@ -34,3 +29,7 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+# Импорт маршрутов
+from api import api_router
+app.include_router(api_router, prefix="/api")
