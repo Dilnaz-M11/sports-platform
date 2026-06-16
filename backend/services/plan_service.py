@@ -58,7 +58,7 @@ class PlanService:
         if user.max_hr:
             return user.max_hr
         age = PlanService.calculate_age(user.birth_date)
-        return 208 - 0.7 * age
+        return int(208 - 0.7 * age)
     
     @staticmethod
     def calculate_hr_zones(user) -> Dict[int, Dict]:
@@ -289,8 +289,9 @@ class PlanService:
         """Генерация плана для общего оздоровления"""
         plan = []
         
+        # Уровень подготовки пользователя
         level_map = {
-            "beginner": (15, 3),
+            "beginner": (15, 3),   # (длительность в минутах, частота в неделю)
             "intermediate": (20, 4),
             "advanced": (25, 5)
         }
@@ -300,53 +301,63 @@ class PlanService:
         # Пульсовые зоны
         hr_zones = PlanService.calculate_hr_zones(user)
         
+        # ✅ ИСПРАВЛЕНО: список упражнений с иконками
         exercises = [
-            {"name": "🧘 Растяжка всего тела", "hr_zone": 1, "calories_per_min": 3},
-            {"name": "🔄 Наклоны и скручивания", "hr_zone": 2, "calories_per_min": 4},
-            {"name": "💪 Упражнения для спины", "hr_zone": 2, "calories_per_min": 4},
-            {"name": "🏋️ Укрепление пресса", "hr_zone": 3, "calories_per_min": 5},
-            {"name": "⚖️ Комплекс на равновесие", "hr_zone": 2, "calories_per_min": 3},
-            {"name": "🌬️ Дыхательная гимнастика", "hr_zone": 1, "calories_per_min": 2},
-            {"name": "🦵 Суставная гимнастика", "hr_zone": 1, "calories_per_min": 3},
-            {"name": "❤️ Кардио (лёгкое)", "hr_zone": 2, "calories_per_min": 6},
+            {"name": "Растяжка всего тела", "icon": "🧘", "hr_zone": 1, "calories_per_min": 3},
+            {"name": "Наклоны и скручивания", "icon": "🔄", "hr_zone": 2, "calories_per_min": 4},
+            {"name": "Упражнения для спины", "icon": "💪", "hr_zone": 2, "calories_per_min": 4},
+            {"name": "Укрепление пресса", "icon": "🏋️", "hr_zone": 3, "calories_per_min": 5},
+            {"name": "Комплекс на равновесие", "icon": "⚖️", "hr_zone": 2, "calories_per_min": 3},
+            {"name": "Дыхательная гимнастика", "icon": "🌬️", "hr_zone": 1, "calories_per_min": 2},
+            {"name": "Суставная гимнастика", "icon": "🦵", "hr_zone": 1, "calories_per_min": 3},
+            {"name": "Кардио (лёгкое)", "icon": "❤️", "hr_zone": 2, "calories_per_min": 6},
         ]
         
         for week in range(1, weeks + 1):
+            # Увеличиваем длительность каждую неделю
             duration = min(base_duration + (week - 1) * 2, 40)
             frequency = base_frequency
             
+            # Определяем дни тренировок
             if frequency == 3:
-                days = [2, 4, 6]
+                days = [2, 4, 6]  # Вт, Чт, Сб
             elif frequency == 4:
-                days = [1, 3, 5, 6]
+                days = [1, 3, 5, 6]  # Пн, Ср, Пт, Сб
             else:
-                days = [1, 2, 3, 5, 6]
+                days = [1, 2, 3, 5, 6]  # Пн, Вт, Ср, Пт, Сб
             
             for i, day in enumerate(days):
+                # Выбираем упражнение
                 exercise_idx = (week + i) % len(exercises)
                 exercise = exercises[exercise_idx]
                 
+                # Интенсивность зависит от недели
                 if week < 3:
                     intensity_desc = "лёгкая"
+                    intensity_zone = exercise["hr_zone"]
                 else:
                     intensity_desc = "средняя"
+                    intensity_zone = min(exercise["hr_zone"] + 1, 4)
                 
                 # Расчёт калорий
                 calories = round(duration * exercise["calories_per_min"])
                 
-                # Целевая пульсовая зона
-                target_hr_zone = hr_zones.get(exercise["hr_zone"], hr_zones[2])
+                # Расчёт TRIMP
+                target_hr_zone = hr_zones.get(intensity_zone, hr_zones[2])
+                avg_hr = round((target_hr_zone["min"] + target_hr_zone["max"]) / 2)
+                trimp = PlanService.calculate_trimp(duration, avg_hr, user)
                 
+                # ✅ ИСПРАВЛЕНО: все переменные определены
                 plan.append({
                     "week": week,
                     "day": day,
-                    "workout_type": f"{activity['icon']} {activity['type']}",
+                    "workout_type": f"{exercise['icon']} {exercise['name']}",
                     "duration_min": duration,
-                    "distance_km": distance,
+                    "distance_km": None,  # Для здоровья дистанция не учитывается
                     "calories": calories,
                     "trimp": trimp,
                     "target_hr_zone": f"{target_hr_zone['min']:.0f}-{target_hr_zone['max']:.0f}",
-                    "predicted_weight": predicted_weight,
+                    "predicted_weight": None,  # Для здоровья прогноз веса не нужен
                     "intensity_zone": intensity_zone,
                     "intensity_desc": intensity_desc
                 })
