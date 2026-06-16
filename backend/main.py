@@ -10,10 +10,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ РАЗРЕШАЕМ ВСЕ ИСТОЧНИКИ (для теста)
+# ✅ ПРАВИЛЬНАЯ НАСТРОЙКА CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем все источники
+    allow_origins=[
+        "https://sports-platform-q1ix.vercel.app",  # Ваш домен на Vercel
+        "http://localhost:5173",                    # Для локальной разработки
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
