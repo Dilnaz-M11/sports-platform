@@ -1,0 +1,27 @@
+import React from 'react';
+
+function App() {
+  return (
+    <div style={{ 
+      background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', 
+      minHeight: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      color: 'white',
+      fontSize: '2rem'
+    }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(10px)',
+        padding: '40px',
+        borderRadius: '24px',
+        textAlign: 'center'
+      }}>
+        ✅ Если вы видите этот текст с фоном - стили работают!
+      </div>
+    </div>
+  );
+}
+
+export default App;

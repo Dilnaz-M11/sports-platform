@@ -1,0 +1,189 @@
+/* ========================================
+   ПЛАТФОРМА ПЕРСОНАЛЬНЫЙ ТРЕНЕР
+   СОВРЕМЕННЫЙ ДИЗАЙН - ПРИНУДИТЕЛЬНОЕ ПРИМЕНЕНИЕ
+   ======================================== */
+
+/* Сброс стилей */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ГЛОБАЛЬНЫЙ ФОН - тёмный градиент */
+body {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
+    font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif !important;
+    min-height: 100vh;
+    color: #ffffff !important;
+}
+
+/* Контейнер приложения */
+.app-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    background: transparent !important;
+}
+
+/* КАРТОЧКИ - стекло */
+.card {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 24px !important;
+    padding: 32px !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s ease !important;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(108, 92, 231, 0.6) !important;
+    box-shadow: 0 30px 50px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ЗАГОЛОВКИ */
+h1 {
+    font-size: 2.5rem !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, #ffffff, #a855f7, #06b6d4) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    color: transparent !important;
+    text-align: center !important;
+    margin-bottom: 30px !important;
+}
+
+h2 {
+    font-size: 1.8rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    margin-bottom: 20px !important;
+}
+
+h3 {
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    color: #c084fc !important;
+    margin-bottom: 15px !important;
+}
+
+/* ФОРМЫ */
+.form-group {
+    margin-bottom: 20px !important;
+    text-align: left !important;
+}
+
+label {
+    display: block !important;
+    margin-bottom: 8px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+input, select, textarea {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 16px !important;
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+}
+
+input:focus, select:focus {
+    outline: none !important;
+    border-color: #a855f7 !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3) !important;
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* КНОПКИ */
+button {
+    padding: 12px 28px !important;
+    background: linear-gradient(135deg, #a855f7, #06b6d4) !important;
+    border: none !important;
+    border-radius: 40px !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+button:hover {
+    transform: translateY(-2px) !important;
+    filter: brightness(1.1) !important;
+}
+
+button.secondary {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+button.secondary:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* ТАБЛИЦЫ */
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 14px 16px;
+    background: rgba(168, 85, 247, 0.3);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+tr:hover td {
+    background: rgba(168, 85, 247, 0.15);
+}
+
+/* Интенсивность */
+.intensity-low { color: #10b981 !important; font-weight: 600 !important; }
+.intensity-medium { color: #f59e0b !important; font-weight: 600 !important; }
+.intensity-high { color: #ef4444 !important; font-weight: 600 !important; }
+
+/* Разделитель */
+hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    margin: 20px 0;
+}
+
+/* Мобильная версия */
+@media (max-width: 768px) {
+    .card {
+        padding: 20px !important;
+    }
+    h1 {
+        font-size: 1.8rem !important;
+    }
+    th, td {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+    }
+}
