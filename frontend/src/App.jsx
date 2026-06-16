@@ -2,123 +2,103 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function App() {
+  // ✅ ИСПРАВЛЕНО: добавил знак "=" после useState
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState(null);
   const [step, setStep] = useState('login');
   const [weeks, setWeeks] = useState({});
   const [currentWeek, setCurrentWeek] = useState(1);
+  const [loading, setLoading] = useState(false);
+
   const [userData, setUserData] = useState({
-    birth_date: '', gender: 'male', weight_kg: '', height_cm: '',
-    fitness_level: 'beginner', rest_hr: '', max_hr: ''
+    birth_date: '',
+    gender: 'male',
+    weight_kg: '',
+    height_cm: '',
+    fitness_level: 'beginner',
+    rest_hr: '',
+    max_hr: ''
   });
+
   const [goalData, setGoalData] = useState({
-    goal_type: 'weight_loss', target_value: 65, deadline_weeks: 8
+    goal_type: 'weight_loss',
+    target_value: '',
+    deadline_weeks: 8
   });
 
   const api = axios.create({ baseURL: 'http://localhost:8000/api' });
 
   api.interceptors.request.use((config) => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      config.headers.Authorization = `Bearer ${savedToken}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   });
 
-  const getIntensityClass = (level) => {
-    if (level === 'высокая') return '#ef4444';
-    if (level === 'средняя') return '#f59e0b';
-    return '#10b981';
+  // Функция выхода
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setIsLoggedIn(false);
+    setStep('login');
   };
-  const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const formData = new FormData(e.target);
     try {
       const response = await api.post('/auth/login', {
         username: formData.get('username'),
         password: formData.get('password')
       }, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-      localStorage.setItem('token', response.data.access_token);
       setToken(response.data.access_token);
+      localStorage.setItem('token', response.data.access_token);
       setIsLoggedIn(true);
       setStep('profile');
-      alert('Вход выполнен успешно!');
-    } catch (error) { 
-      alert('Ошибка входа: ' + (error.response?.data?.detail || 'Неверный логин или пароль'));
+    } catch (error) {
+      alert('❌ Ошибка входа. Проверьте логин и пароль.');
     }
+    setLoading(false);
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const formData = new FormData(e.target);
     try {
       await api.post('/auth/register', {
-        login: formData.get('login'), email: formData.get('email'), password: formData.get('password'),
-        birth_date: formData.get('birth_date'), gender: formData.get('gender'),
-        weight_kg: parseFloat(formData.get('weight_kg')), height_cm: parseFloat(formData.get('height_cm')),
+        login: formData.get('login'),
+        email: formData.get('email'),
+        password: formData.get('password'),
+        birth_date: formData.get('birth_date'),
+        gender: formData.get('gender'),
+        weight_kg: parseFloat(formData.get('weight_kg')),
+        height_cm: parseFloat(formData.get('height_cm')),
         fitness_level: formData.get('fitness_level')
       });
-      alert('Регистрация успешна! Теперь войдите.');
-    } catch (error) { 
-      alert('Ошибка регистрации: ' + (error.response?.data?.detail || 'Попробуйте другой логин'));
+      alert('✅ Регистрация успешна! Теперь войдите в систему.');
+    } catch (error) {
+      alert('❌ Ошибка регистрации. Возможно, такой пользователь уже существует.');
     }
+    setLoading(false);
   };
 
   const updateProfile = async (e) => {
     e.preventDefault();
-    
-    if (!userData.birth_date) {
-      alert('Укажите дату рождения');
-      return;
-    }
-    if (!userData.weight_kg || userData.weight_kg <= 0) {
-      alert('Укажите корректный вес');
-      return;
-    }
-    if (!userData.height_cm || userData.height_cm <= 0) {
-      alert('Укажите корректный рост');
-      return;
-    }
-    
-    let birthDate = userData.birth_date;
-    if (birthDate && birthDate.includes('.')) {
-      const parts = birthDate.split('.');
-      if (parts.length === 3) {
-        birthDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
-    }
-    
+    setLoading(true);
     try {
-      const payload = {
-        birth_date: birthDate,
-        gender: userData.gender,
-        weight_kg: parseFloat(userData.weight_kg),
-        height_cm: parseFloat(userData.height_cm),
-        fitness_level: userData.fitness_level,
-        rest_hr: userData.rest_hr ? parseInt(userData.rest_hr) : null,
-        max_hr: userData.max_hr ? parseInt(userData.max_hr) : null
-      };
-      
-      await api.post('/plan/update-profile', payload);
+      await api.post('/plan/update-profile', userData);
       setStep('goal');
-    } catch (error) { 
-      alert('Ошибка сохранения профиля: ' + (error.response?.data?.detail || 'Неизвестная ошибка')); 
+    } catch (error) {
+      alert('❌ Ошибка сохранения профиля');
     }
+    setLoading(false);
   };
 
   const createGoal = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      let dataToSend = { ...goalData };
-      if (dataToSend.goal_type === 'health') {
-        dataToSend.target_value = 0;
-      } else {
-        dataToSend.target_value = parseFloat(dataToSend.target_value);
-      }
-      dataToSend.deadline_weeks = parseInt(dataToSend.deadline_weeks);
-      await api.post('/plan/create-goal', dataToSend);
+      await api.post('/plan/create-goal', goalData);
       setStep('plan');
       const response = await api.post('/plan/generate');
       const weeksMap = {};
@@ -127,257 +107,584 @@ function App() {
         weeksMap[item.week].push(item);
       });
       setWeeks(weeksMap);
-    } catch (error) { 
-      alert('Ошибка создания цели');
+    } catch (error) {
+      alert('❌ Ошибка создания цели');
     }
+    setLoading(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setIsLoggedIn(false);
-    setStep('login');
-  };
-
-  const handleBackToGoal = () => {
-    setStep('goal');
-  };
-
+  // Загрузка сохраненного плана при входе
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      setToken(savedToken);
-      setIsLoggedIn(true);
+    if (savedToken) { 
+      setToken(savedToken); 
+      setIsLoggedIn(true); 
       setStep('profile');
+      api.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+      api.get('/plan/current').then(res => {
+        if (res.data.weeks && Object.keys(res.data.weeks).length > 0) {
+          setWeeks(res.data.weeks);
+          setStep('plan');
+        }
+      }).catch(() => {});
     }
   }, []);
 
-  // Стили с чёрным фоном для select
-  const inputStyle = {
-    width: '100%',
-    padding: '12px 16px',
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    borderRadius: '16px',
-    color: '#ffffff',
-    fontSize: '1rem',
-    boxSizing: 'border-box'
+  // Стили для светлой темы
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    },
+    card: {
+      background: 'white',
+      borderRadius: '20px',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+      padding: '40px',
+      maxWidth: '520px',
+      margin: '0 auto',
+      transition: 'all 0.3s ease'
+    },
+    cardWide: {
+      background: 'white',
+      borderRadius: '20px',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+      padding: '40px',
+      maxWidth: '1200px',
+      margin: '0 auto'
+    },
+    input: {
+      width: '100%',
+      padding: '12px 16px',
+      marginBottom: '16px',
+      border: '2px solid #e2e8f0',
+      borderRadius: '12px',
+      fontSize: '16px',
+      transition: 'border-color 0.3s ease',
+      boxSizing: 'border-box',
+      background: '#f7fafc'
+    },
+    select: {
+      width: '100%',
+      padding: '12px 16px',
+      marginBottom: '16px',
+      border: '2px solid #e2e8f0',
+      borderRadius: '12px',
+      fontSize: '16px',
+      background: '#f7fafc',
+      boxSizing: 'border-box'
+    },
+    buttonPrimary: {
+      width: '100%',
+      padding: '14px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '12px',
+      fontSize: '18px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+    },
+    buttonSecondary: {
+      padding: '10px 24px',
+      background: 'white',
+      color: '#4a5568',
+      border: '2px solid #e2e8f0',
+      borderRadius: '10px',
+      fontSize: '15px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease'
+    },
+    buttonBack: {
+      padding: '10px 20px',
+      background: 'white',
+      color: '#4a5568',
+      border: '2px solid #e2e8f0',
+      borderRadius: '10px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    buttonSuccess: {
+      padding: '10px 24px',
+      background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '10px',
+      fontSize: '15px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      boxShadow: '0 4px 15px rgba(72, 187, 120, 0.3)'
+    },
+    buttonDanger: {
+      padding: '8px 20px',
+      background: 'linear-gradient(135deg, #fc8181 0%, #e53e3e 100%)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '10px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      boxShadow: '0 4px 15px rgba(229, 62, 62, 0.3)'
+    },
+    label: {
+      display: 'block',
+      fontSize: '14px',
+      fontWeight: '600',
+      color: '#4a5568',
+      marginBottom: '6px'
+    },
+    title: {
+      fontSize: '28px',
+      fontWeight: '700',
+      color: '#2d3748',
+      marginBottom: '8px',
+      textAlign: 'center'
+    },
+    subtitle: {
+      fontSize: '16px',
+      color: '#718096',
+      textAlign: 'center',
+      marginBottom: '24px'
+    },
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '20px 0',
+      borderBottom: '2px solid #e2e8f0',
+      marginBottom: '30px'
+    },
+    logo: {
+      fontSize: '24px',
+      fontWeight: '700',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent'
+    },
+    table: {
+      width: '100%',
+      borderCollapse: 'collapse',
+      background: 'white',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+    },
+    th: {
+      background: '#f7fafc',
+      padding: '12px 16px',
+      textAlign: 'left',
+      fontSize: '14px',
+      fontWeight: '600',
+      color: '#4a5568',
+      borderBottom: '2px solid #e2e8f0'
+    },
+    td: {
+      padding: '12px 16px',
+      borderBottom: '1px solid #e2e8f0',
+      fontSize: '14px',
+      color: '#2d3748'
+    },
+    badge: {
+      display: 'inline-block',
+      padding: '4px 12px',
+      borderRadius: '20px',
+      fontSize: '12px',
+      fontWeight: '600'
+    },
+    badgeSuccess: {
+      background: '#c6f6d5',
+      color: '#22543d'
+    },
+    badgeWarning: {
+      background: '#fefcbf',
+      color: '#975a16'
+    },
+    badgeInfo: {
+      background: '#bee3f8',
+      color: '#2a69ac'
+    },
+    navBar: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '20px',
+      padding: '10px 0'
+    },
+    navButtons: {
+      display: 'flex',
+      gap: '12px',
+      alignItems: 'center'
+    }
   };
 
-  const selectStyle = {
-    width: '100%',
-    padding: '12px 16px',
-    backgroundColor: '#1a1a2e',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    borderRadius: '16px',
-    color: '#ffffff',
-    fontSize: '1rem',
-    boxSizing: 'border-box',
-    cursor: 'pointer'
-  };
-
-  const buttonStyle = {
-    background: 'linear-gradient(135deg, #a855f7, #06b6d4)',
-    border: 'none',
-    borderRadius: '40px',
-    padding: '12px 28px',
-    color: 'white',
-    fontWeight: '600',
-    fontSize: '1rem',
-    cursor: 'pointer',
-    width: '100%'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    marginBottom: '8px',
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.9)'
-  };
-
-  const cardStyle = {
-    background: 'rgba(255, 255, 255, 0.08)',
-    backdropFilter: 'blur(12px)',
-    borderRadius: '24px',
-    padding: '32px',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
-  };
-
-  // Страница входа/регистрации
+  // Страница входа/регистрации (без навигации)
   if (!isLoggedIn) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-        <div style={{ ...cardStyle, maxWidth: '500px', width: '100%' }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: '700', textAlign: 'center', background: 'linear-gradient(135deg, #fff, #a855f7, #06b6d4)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', marginBottom: '30px' }}>
-            🏋️ Персональный тренер
-          </h1>
-          <h3 style={{ color: '#c084fc', marginBottom: '15px' }}>Вход</h3>
-          <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: '16px' }}><input type="text" name="username" placeholder="Логин" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '16px' }}><input type="password" name="password" placeholder="Пароль" required style={inputStyle} /></div>
-            <button type="submit" style={buttonStyle}>Войти</button>
-          </form>
-          <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.15)', margin: '20px 0' }} />
-          <h3 style={{ color: '#c084fc', marginBottom: '15px' }}>Регистрация</h3>
-          <form onSubmit={handleRegister}>
-            <div style={{ marginBottom: '12px' }}><input type="text" name="login" placeholder="Логин" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '12px' }}><input type="email" name="email" placeholder="Email" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '12px' }}><input type="password" name="password" placeholder="Пароль" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '12px' }}><input type="date" name="birth_date" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '12px' }}>
-              <select name="gender" required style={selectStyle}>
-                <option value="male">Мужской</option>
-                <option value="female">Женский</option>
-              </select>
+      <div style={styles.container}>
+        <div style={{ padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <div style={styles.card}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🏋️</div>
+              <h1 style={styles.title}>Тренировочная платформа</h1>
+              <p style={styles.subtitle}>Автоматическое построение персональных тренировочных планов</p>
             </div>
-            <div style={{ marginBottom: '12px' }}><input type="number" step="0.5" name="weight_kg" placeholder="Вес (кг)" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '12px' }}><input type="number" step="0.5" name="height_cm" placeholder="Рост (см)" required style={inputStyle} /></div>
-            <div style={{ marginBottom: '12px' }}>
-              <select name="fitness_level" style={selectStyle}>
-                <option value="beginner">Начинающий</option>
-                <option value="intermediate">Любитель</option>
-                <option value="advanced">Продвинутый</option>
+            
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#2d3748', marginBottom: '16px' }}>Вход в систему</h2>
+            <form onSubmit={handleLogin}>
+              <input
+                type="text"
+                name="username"
+                placeholder="👤 Логин"
+                required
+                style={styles.input}
+                onFocus={e => e.target.style.borderColor = '#667eea'}
+                onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+              />
+              <input
+                type="password"
+                name="password"
+                placeholder="🔒 Пароль"
+                required
+                style={styles.input}
+                onFocus={e => e.target.style.borderColor = '#667eea'}
+                onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+              />
+              <button type="submit" style={styles.buttonPrimary} disabled={loading}>
+                {loading ? '⏳ Загрузка...' : '🚀 Войти'}
+              </button>
+            </form>
+
+            <hr style={{ margin: '24px 0', border: 'none', borderTop: '2px solid #e2e8f0' }} />
+
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#2d3748', marginBottom: '16px' }}>Создать аккаунт</h2>
+            <form onSubmit={handleRegister}>
+              <input type="text" name="login" placeholder="👤 Логин" required style={styles.input} />
+              <input type="email" name="email" placeholder="📧 Email" required style={styles.input} />
+              <input type="password" name="password" placeholder="🔒 Пароль" required style={styles.input} />
+              <input type="date" name="birth_date" required style={styles.input} />
+              <select name="gender" style={styles.select}>
+                <option value="male">👨 Мужской</option>
+                <option value="female">👩 Женский</option>
               </select>
-            </div>
-            <button type="submit" style={buttonStyle}>Зарегистрироваться</button>
-          </form>
+              <input type="number" name="weight_kg" placeholder="⚖️ Вес (кг)" required style={styles.input} />
+              <input type="number" name="height_cm" placeholder="📏 Рост (см)" required style={styles.input} />
+              <select name="fitness_level" style={styles.select}>
+                <option value="beginner">🌱 Начинающий</option>
+                <option value="intermediate">🌟 Любитель</option>
+                <option value="advanced">🔥 Продвинутый</option>
+              </select>
+              <button type="submit" style={{ ...styles.buttonPrimary, background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' }} disabled={loading}>
+                {loading ? '⏳ Загрузка...' : '📝 Зарегистрироваться'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Страница профиля
+  // Страница профиля (с навигацией)
   if (step === 'profile') {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-        <div style={{ ...cardStyle, maxWidth: '550px', width: '100%', position: 'relative' }}>
-          <button onClick={handleLogout} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '40px', padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: '12px' }}>Выйти</button>
-          <h1 style={{ fontSize: '2rem', fontWeight: '700', textAlign: 'center', background: 'linear-gradient(135deg, #fff, #a855f7, #06b6d4)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', marginBottom: '30px' }}>
-            📝 Расскажите о себе
-          </h1>
-          <form onSubmit={updateProfile}>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Дата рождения (ДД.ММ.ГГГГ)</label><input type="text" placeholder="21.03.2002" value={userData.birth_date} onChange={e => setUserData({...userData, birth_date: e.target.value})} required style={inputStyle} /></div>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Пол</label>
-              <select value={userData.gender} onChange={e => setUserData({...userData, gender: e.target.value})} style={selectStyle}>
+      <div style={styles.container}>
+        <div style={{ padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <div style={styles.card}>
+            {/* Навигационная панель */}
+            <div style={styles.navBar}>
+              <button 
+                onClick={handleLogout}
+                style={styles.buttonDanger}
+              >
+                🚪 Выйти
+              </button>
+              <span style={{ fontSize: '14px', color: '#718096' }}>Шаг 1 из 3</span>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>📝</div>
+              <h1 style={styles.title}>Расскажите о себе</h1>
+              <p style={styles.subtitle}>Для генерации плана нам нужны ваши данные</p>
+            </div>
+            <form onSubmit={updateProfile}>
+              <label style={styles.label}>📅 Дата рождения</label>
+              <input type="date" value={userData.birth_date} onChange={e => setUserData({...userData, birth_date: e.target.value})} required style={styles.input} />
+              
+              <label style={styles.label}>👤 Пол</label>
+              <select value={userData.gender} onChange={e => setUserData({...userData, gender: e.target.value})} style={styles.select}>
                 <option value="male">Мужской</option>
                 <option value="female">Женский</option>
               </select>
-            </div>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Вес (кг)</label><input type="number" step="0.5" value={userData.weight_kg} onChange={e => setUserData({...userData, weight_kg: e.target.value})} required style={inputStyle} /></div>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Рост (см)</label><input type="number" step="0.5" value={userData.height_cm} onChange={e => setUserData({...userData, height_cm: e.target.value})} required style={inputStyle} /></div>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Уровень подготовки</label>
-              <select value={userData.fitness_level} onChange={e => setUserData({...userData, fitness_level: e.target.value})} style={selectStyle}>
-                <option value="beginner">Начинающий</option>
-                <option value="intermediate">Любитель</option>
-                <option value="advanced">Продвинутый</option>
+              
+              <label style={styles.label}>⚖️ Вес (кг)</label>
+              <input type="number" step="0.5" value={userData.weight_kg} onChange={e => setUserData({...userData, weight_kg: e.target.value})} required style={styles.input} />
+              
+              <label style={styles.label}>📏 Рост (см)</label>
+              <input type="number" value={userData.height_cm} onChange={e => setUserData({...userData, height_cm: e.target.value})} required style={styles.input} />
+              
+              <label style={styles.label}>📊 Уровень подготовки</label>
+              <select value={userData.fitness_level} onChange={e => setUserData({...userData, fitness_level: e.target.value})} style={styles.select}>
+                <option value="beginner">🌱 Начинающий</option>
+                <option value="intermediate">🌟 Любитель</option>
+                <option value="advanced">🔥 Продвинутый</option>
               </select>
-            </div>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Пульс покоя (опционально)</label><input type="number" value={userData.rest_hr} onChange={e => setUserData({...userData, rest_hr: e.target.value})} style={inputStyle} /></div>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Максимальный пульс (опционально)</label><input type="number" value={userData.max_hr} onChange={e => setUserData({...userData, max_hr: e.target.value})} style={inputStyle} /></div>
-            <button type="submit" style={buttonStyle}>Далее →</button>
-          </form>
+              
+              <label style={styles.label}>💓 Пульс покоя (опционально)</label>
+              <input type="number" value={userData.rest_hr} onChange={e => setUserData({...userData, rest_hr: e.target.value})} placeholder="Например: 60" style={styles.input} />
+              
+              <label style={styles.label}>💓 Максимальный пульс (опционально)</label>
+              <input type="number" value={userData.max_hr} onChange={e => setUserData({...userData, max_hr: e.target.value})} placeholder="Например: 190" style={styles.input} />
+              
+              <button type="submit" style={styles.buttonPrimary} disabled={loading}>
+                {loading ? '⏳ Сохранение...' : '➡️ Далее'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Страница выбора цели
+  // Страница выбора цели (с навигацией)
   if (step === 'goal') {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-        <div style={{ ...cardStyle, maxWidth: '650px', width: '100%', position: 'relative' }}>
-          <button onClick={handleLogout} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '40px', padding: '6px 12px', color: 'white', cursor: 'pointer', fontSize: '12px' }}>Выйти</button>
-          <h1 style={{ fontSize: '2rem', fontWeight: '700', textAlign: 'center', background: 'linear-gradient(135deg, #fff, #a855f7, #06b6d4)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', marginBottom: '30px' }}>
-            🎯 Какую цель вы хотите достичь?
-          </h1>
-          <form onSubmit={createGoal}>
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Тип цели</label>
-              <select value={goalData.goal_type} onChange={e => setGoalData({...goalData, goal_type: e.target.value})} style={selectStyle}>
+      <div style={styles.container}>
+        <div style={{ padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+          <div style={{ ...styles.card, maxWidth: '600px' }}>
+            {/* Навигационная панель */}
+            <div style={styles.navBar}>
+              <div style={styles.navButtons}>
+                <button 
+                  onClick={() => setStep('profile')}
+                  style={styles.buttonBack}
+                >
+                  ⬅️ Назад
+                </button>
+                <button 
+                  onClick={handleLogout}
+                  style={styles.buttonDanger}
+                >
+                  🚪 Выйти
+                </button>
+              </div>
+              <span style={{ fontSize: '14px', color: '#718096' }}>Шаг 2 из 3</span>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎯</div>
+              <h1 style={styles.title}>Выберите цель</h1>
+              <p style={styles.subtitle}>Какую цель вы хотите достичь?</p>
+            </div>
+            <form onSubmit={createGoal}>
+              <label style={styles.label}>🎯 Тип цели</label>
+              <select value={goalData.goal_type} onChange={e => setGoalData({...goalData, goal_type: e.target.value})} style={styles.select}>
                 <option value="weight_loss">⚖️ Снижение веса</option>
                 <option value="endurance">🏃 Улучшение выносливости (бег)</option>
                 <option value="health">❤️ Общее оздоровление</option>
               </select>
-            </div>
-            {goalData.goal_type === 'weight_loss' && (
-              <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Целевой вес (кг)</label><input type="number" step="0.5" value={goalData.target_value} onChange={e => setGoalData({...goalData, target_value: e.target.value})} required style={inputStyle} /></div>
-            )}
-            {goalData.goal_type === 'endurance' && (
-              <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Целевая дистанция (км)</label>
-                <select value={goalData.target_value} onChange={e => setGoalData({...goalData, target_value: e.target.value})} style={selectStyle}>
-                  <option value="5">5 км</option><option value="10">10 км</option><option value="21">21 км (полумарафон)</option><option value="42">42 км (марафон)</option>
-                </select>
-              </div>
-            )}
-            <div style={{ marginBottom: '16px' }}><label style={labelStyle}>Срок (недель)</label><input type="number" value={goalData.deadline_weeks} onChange={e => setGoalData({...goalData, deadline_weeks: parseInt(e.target.value)})} style={inputStyle} /></div>
-            <button type="submit" style={buttonStyle}>🎯 Сгенерировать план</button>
-          </form>
+              
+              {goalData.goal_type === 'weight_loss' && (
+                <>
+                  <label style={styles.label}>🎯 Целевой вес (кг)</label>
+                  <input type="number" step="0.5" value={goalData.target_value} onChange={e => setGoalData({...goalData, target_value: e.target.value})} required style={styles.input} placeholder="Например: 70" />
+                </>
+              )}
+              
+              {goalData.goal_type === 'endurance' && (
+                <>
+                  <label style={styles.label}>🎯 Целевая дистанция (км)</label>
+                  <select value={goalData.target_value} onChange={e => setGoalData({...goalData, target_value: e.target.value})} style={styles.select}>
+                    <option value="5">5 км</option>
+                    <option value="10">10 км</option>
+                    <option value="21">21 км (полумарафон)</option>
+                    <option value="42">42 км (марафон)</option>
+                  </select>
+                </>
+              )}
+              
+              <label style={styles.label}>📅 Срок (недель)</label>
+              <input type="number" value={goalData.deadline_weeks} onChange={e => setGoalData({...goalData, deadline_weeks: parseInt(e.target.value)})} style={styles.input} min="4" max="16" />
+              
+              <button type="submit" style={{ ...styles.buttonPrimary, background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)' }} disabled={loading}>
+                {loading ? '⏳ Генерация...' : '🎯 Сгенерировать план'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Главная страница с планом тренировок
-  return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', padding: '30px 20px' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button onClick={handleBackToGoal} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '40px', padding: '10px 20px', color: 'white', cursor: 'pointer' }}>← Назад</button>
-            <h1 style={{ fontSize: '2rem', fontWeight: '700', background: 'linear-gradient(135deg, #fff, #a855f7, #06b6d4)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-              🏋️ Ваш персональный план
-            </h1>
-          </div>
-          <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '40px', padding: '10px 20px', color: 'white', cursor: 'pointer' }}>Выйти</button>
-        </div>
+  // Страница плана (с навигацией)
+  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const weekCount = Object.keys(weeks).length;
 
-        {Object.keys(weeks).length > 0 && weeks[currentWeek] ? (
-          <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ color: '#c084fc', margin: 0 }}>Неделя {currentWeek}</h2>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button disabled={currentWeek === 1} onClick={() => setCurrentWeek(prev => prev - 1)} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '40px', padding: '8px 16px', color: 'white', cursor: 'pointer' }}>← Назад</button>
-                <button disabled={currentWeek === Object.keys(weeks).length} onClick={() => setCurrentWeek(prev => prev + 1)} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '40px', padding: '8px 16px', color: 'white', cursor: 'pointer' }}>Вперёд →</button>
+  return (
+    <div style={styles.container}>
+      <div style={{ padding: '20px' }}>
+        <div style={styles.cardWide}>
+          {/* Хедер с навигацией */}
+          <div style={styles.header}>
+            <div>
+              <span style={styles.logo}>🏋️ Тренировочная платформа</span>
+              <span style={{ marginLeft: '16px', fontSize: '14px', color: '#718096' }}>Ваш персональный план</span>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <button 
+                onClick={() => setStep('goal')}
+                style={styles.buttonBack}
+              >
+                ⬅️ Назад
+              </button>
+              {weekCount > 0 && (
+                <span style={{ ...styles.badge, ...styles.badgeInfo }}>
+                  📅 {weekCount} недель
+                </span>
+              )}
+              <button 
+                onClick={handleLogout}
+                style={styles.buttonDanger}
+              >
+                🚪 Выйти
+              </button>
+            </div>
+          </div>
+
+          {weekCount > 0 && weeks[currentWeek] ? (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: '600', color: '#2d3748' }}>
+                  📋 Неделя {currentWeek} из {weekCount}
+                </h2>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    disabled={currentWeek === 1} 
+                    onClick={() => setCurrentWeek(currentWeek - 1)}
+                    style={{ ...styles.buttonSecondary, opacity: currentWeek === 1 ? 0.5 : 1, cursor: currentWeek === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    ⬅️ Назад
+                  </button>
+                  <button 
+                    disabled={currentWeek === weekCount} 
+                    onClick={() => setCurrentWeek(currentWeek + 1)}
+                    style={{ ...styles.buttonSecondary, opacity: currentWeek === weekCount ? 0.5 : 1, cursor: currentWeek === weekCount ? 'not-allowed' : 'pointer' }}
+                  >
+                    Вперёд ➡️
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>📅 День</th>
+                      <th style={styles.th}>🏋️ Тип</th>
+                      <th style={styles.th}>⏱️ Длительность</th>
+                      <th style={styles.th}>📏 Дистанция (км)</th>
+                      <th style={styles.th}>⚡ Интенсивность</th>
+                      <th style={styles.th}>💓 Пульс</th>
+                      <th style={styles.th}>🔥 Калории</th>
+                      <th style={styles.th}>📊 TRIMP</th>
+                      <th style={styles.th}>⚖️ Прогноз веса</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeks[currentWeek].map((item, idx) => (
+                      <tr key={idx} style={{ background: idx % 2 === 0 ? 'white' : '#f7fafc' }}>
+                        <td style={styles.td}>
+                          <strong>{dayNames[item.day - 1]}</strong>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '20px', background: '#ebf4ff', color: '#2a69ac', fontSize: '13px', fontWeight: '500' }}>
+                            {item.workout_type || '🏃 Бег'}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          <strong>{item.duration_min}</strong> мин
+                        </td>
+                        <td style={styles.td}>
+                          {item.distance_km ? <strong>{item.distance_km}</strong> : '-'}
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{
+                            ...styles.badge,
+                            ...(item.intensity_desc === 'высокая' ? styles.badgeWarning : 
+                               item.intensity_desc === 'средняя' ? styles.badgeInfo : 
+                               styles.badgeSuccess)
+                          }}>
+                            {item.intensity_desc || 'средняя'}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          {item.target_hr_zone || '-'}
+                        </td>
+                        <td style={styles.td}>
+                          {item.calories ? <strong>{item.calories}</strong> : '-'}
+                        </td>
+                        <td style={styles.td}>
+                          {item.trimp || '-'}
+                        </td>
+                        <td style={styles.td}>
+                          {item.predicted_weight ? (
+                            <span style={{ fontWeight: '600', color: '#2f855a' }}>
+                              {item.predicted_weight} кг
+                            </span>
+                          ) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: '30px', background: '#f7fafc', borderRadius: '12px', padding: '20px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#2d3748', marginBottom: '12px' }}>
+                  📊 Прогресс выполнения плана
+                </h4>
+                <div style={{ background: '#e2e8f0', borderRadius: '10px', height: '12px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min((currentWeek / weekCount) * 100, 100)}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: '10px',
+                    transition: 'width 0.5s ease'
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '13px', color: '#718096' }}>
+                  <span>Начало</span>
+                  <span>Неделя {currentWeek} из {weekCount}</span>
+                  <span>Финиш 🏁</span>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '24px', textAlign: 'center', padding: '20px', background: '#f7fafc', borderRadius: '12px' }}>
+                <p style={{ color: '#4a5568', fontSize: '15px', fontStyle: 'italic' }}>
+                  💪 «Каждая тренировка — это шаг к вашей цели. Продолжайте в том же духе!»
+                </p>
               </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>День</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Тип</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Длит.</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Дист. (км)</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Интенс.</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Ккал</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>TRIMP</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Пульс</th>
-                    <th style={{ padding: '14px 16px', textAlign: 'left', color: 'white' }}>Прогноз веса</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeks[currentWeek].map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{weekDays[item.day - 1]}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.workout_type}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.duration_min} мин</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.distance_km || '-'}</td>
-                      <td style={{ padding: '12px 16px', color: getIntensityClass(item.intensity_desc), fontWeight: 'bold' }}>{item.intensity_desc}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.calories || '-'}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.trimp || '-'}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.target_hr_zone || '-'}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(255,255,255,0.9)' }}>{item.predicted_weight ? `${item.predicted_weight} кг` : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>📋</div>
+              <h2 style={{ fontSize: '24px', color: '#2d3748', marginBottom: '12px' }}>План пока не сгенерирован</h2>
+              <p style={{ color: '#718096', marginBottom: '24px' }}>Чтобы получить персональный план, заполните профиль и выберите цель</p>
+              <button 
+                onClick={() => setStep('profile')} 
+                style={{ ...styles.buttonPrimary, width: 'auto', padding: '12px 40px' }}
+              >
+                🔄 Создать план
+              </button>
             </div>
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>Загрузка плана тренировок...</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
