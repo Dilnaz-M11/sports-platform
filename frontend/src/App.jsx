@@ -30,9 +30,11 @@ function App() {
     baseURL: 'https://sports-platform-api-b9e4.onrender.com' 
   });
 
+  // Перехватчик для добавления токена
   api.interceptors.request.use((config) => {
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const currentToken = localStorage.getItem('token');
+    if (currentToken) {
+      config.headers.Authorization = `Bearer ${currentToken}`;
     }
     return config;
   });
@@ -54,8 +56,10 @@ function App() {
         username: formData.get('username'),
         password: formData.get('password')
       }, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-      setToken(response.data.access_token);
-      localStorage.setItem('token', response.data.access_token);
+      const newToken = response.data.access_token;
+      setToken(newToken);
+      localStorage.setItem('token', newToken);
+      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       setIsLoggedIn(true);
       setStep('profile');
     } catch (error) {
@@ -98,7 +102,7 @@ function App() {
     setLoading(false);
   };
 
-  // ✅ ИСПРАВЛЕНО: корректная обработка всех типов целей
+  // ✅ ИСПРАВЛЕНО: улучшенная обработка токенов и ошибок
   const createGoal = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -128,7 +132,19 @@ function App() {
       const response = await api.post('/api/plan/create-goal', payload);
       console.log('✅ Цель создана:', response.data);
       
-      // Переходим к генерации плана
+      // ✅ ПРОВЕРЯЕМ ТОКЕН ПЕРЕД ГЕНЕРАЦИЕЙ
+      const currentToken = localStorage.getItem('token');
+      if (!currentToken) {
+        alert('❌ Сессия истекла. Пожалуйста, войдите заново.');
+        handleLogout();
+        setLoading(false);
+        return;
+      }
+      
+      // ✅ ЯВНО УСТАНАВЛИВАЕМ ТОКЕН ДЛЯ ЗАПРОСА
+      api.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
+      
+      // Генерируем план
       setStep('plan');
       const generateResponse = await api.post('/api/plan/generate');
       
@@ -142,15 +158,11 @@ function App() {
       
     } catch (error) {
       console.error('❌ Ошибка создания цели:', error);
-      if (error.response) {
-        // Сервер вернул ошибку
-        const status = error.response.status;
-        if (status === 401) {
-          alert('❌ Сессия истекла. Пожалуйста, войдите заново.');
-          handleLogout();
-        } else {
-          alert(`❌ Ошибка: ${error.response.data.detail || error.response.statusText}`);
-        }
+      if (error.response && error.response.status === 401) {
+        alert('❌ Сессия истекла. Пожалуйста, войдите заново.');
+        handleLogout();
+      } else if (error.response) {
+        alert(`❌ Ошибка: ${error.response.data.detail || error.response.statusText}`);
       } else if (error.request) {
         // Запрос не дошел до сервера (CORS или сеть)
         alert('❌ Ошибка сети. Проверьте подключение к интернету.');
