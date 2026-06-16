@@ -10,14 +10,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ ПРАВИЛЬНАЯ НАСТРОЙКА CORS
+# Правильная настройка CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
 )
 
 @app.get("/")
