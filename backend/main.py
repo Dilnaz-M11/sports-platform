@@ -10,7 +10,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ ИСПРАВЛЕННАЯ НАСТРОЙКА CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -18,8 +17,8 @@ app.add_middleware(
         "http://localhost:5173",                    # Для локальной разработки
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],   # Разрешаем все методы (GET, POST, PUT, DELETE)
+    allow_headers=["*"],   # Разрешаем все заголовки
 )
 
 @app.get("/")
