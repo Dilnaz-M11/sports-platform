@@ -6,13 +6,11 @@ meta:
 build:
   skip: false
   additionalCommands:
-    - cd frontend
-    - npm cache clean --force
     - npm install
     - npm run build
   artifacts:
-    frontend/dist: /
+    dist: /
 run:
-  command: cd frontend && npx serve -s dist
+  command: npx serve -s dist
   persistenceMount: /data
   containerPort: 80
