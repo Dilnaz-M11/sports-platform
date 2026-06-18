@@ -5,12 +5,14 @@ meta:
     version: "20"
 build:
   skip: false
-  additionalCommands:
-    - npm install
-    - npm run build
+  additionalCommands: null
   artifacts:
-    dist: /
+    /: dist
 run:
+  scriptName: null
+  scriptArguments: null
+  nodeArguments: null
   command: npx serve -s dist
   persistenceMount: /data
   containerPort: 80
+  servicePort: "80"
