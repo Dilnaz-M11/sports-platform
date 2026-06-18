@@ -7,12 +7,8 @@ build:
   skip: false
   additionalCommands: null
   artifacts:
-    /: dist
+    ./dist: /
 run:
-  scriptName: null
-  scriptArguments: null
-  nodeArguments: null
   command: npx serve -s dist
   persistenceMount: /data
   containerPort: 80
-  servicePort: "80"
