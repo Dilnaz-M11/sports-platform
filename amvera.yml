@@ -4,15 +4,14 @@ meta:
     name: npm
     version: "20"
 build:
-  skip: true
-  additionalCommands: null
+  skip: false
+  additionalCommands:
+    - npm cache clean --force
+    - npm install
+    - npm run build
   artifacts:
     dist: /
 run:
-  scriptName: null
-  scriptArguments: null
-  nodeArguments: null
   command: npx serve -s dist
   persistenceMount: /data
-  containerPort: "80"
-  servicePort: "80"
+  containerPort: 80
